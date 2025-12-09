@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1006470042334",
+    "project_id": "sms-grouper-licenses",
+    "storage_bucket": "sms-grouper-licenses.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1006470042334:android:3b2ae378b780bd838a284f",
+        "android_client_info": {
+          "package_name": "com.smsgrouper.sms_grouper"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhAAUozATybGC0Y83lkCLRsknn0GpxRoc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

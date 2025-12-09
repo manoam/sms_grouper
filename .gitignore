@@ -53,8 +53,6 @@ node_modules/
 # Android build files
 /android/build/
 
-# Secrets / credentials
+# Secrets / credentials (service account keys are sensitive)
 serviceAccountKey.json
 **/serviceAccountKey.json
-google-services.json
-**/google-services.json
