@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campagnes - SMS Grouper</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Login Page (hidden by default, shown by JS if needed) -->
+  <div class="login-page" id="loginPage" style="display: none;">
+    <div class="login-container">
+      <div class="login-header">
+        <h1>SMS Grouper</h1>
+        <p>Connectez-vous pour continuer</p>
+      </div>
+      <div class="login-card">
+        <h2>Connexion</h2>
+        <div class="login-error" id="loginError"></div>
+        <form class="login-form" id="loginForm">
+          <div class="form-group">
+            <label for="username">Nom d'utilisateur</label>
+            <input type="text" id="username" placeholder="admin" required autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label for="password">Mot de passe</label>
+            <input type="password" id="password" placeholder="Mot de passe" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application -->
+  <div class="app-container" id="mainApp">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-logo">
+        <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+      </div>
+      <div class="sidebar-nav">
+        <a class="nav-item" href="send.html">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          <span>Envoyer</span>
+        </a>
+        <a class="nav-item" href="inbox.html">
+          <svg viewBox="0 0 24 24"><path d="M19 3H4.99c-1.11 0-1.98.89-1.98 2L3 19c0 1.1.88 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.11-.9-2-2-2zm0 12h-4c0 1.66-1.35 3-3 3s-3-1.34-3-3H4.99V5H19v10z"/></svg>
+          <span>Recus</span>
+        </a>
+        <a class="nav-item" href="outbox.html">
+          <svg viewBox="0 0 24 24"><path d="M19 3H4.99c-1.11 0-1.98.89-1.98 2L3 19c0 1.1.88 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.11-.9-2-2-2zm-7 14l-5-5h3V8h4v4h3l-5 5z"/></svg>
+          <span>Envoyes</span>
+        </a>
+        <a class="nav-item active" href="campaigns.html">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          <span>Campagnes</span>
+        </a>
+      </div>
+      <div class="sidebar-footer">
+        <a class="nav-item logout" id="logoutBtn">
+          <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+          <span>Sortir</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="page-header">
+        <h1 class="page-title">Campagnes d'envoi</h1>
+        <div class="header-status">
+          <div class="status-badge">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Connexion...</span>
+          </div>
+          <div class="user-badge">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <span id="userBadge">Utilisateur</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- License Limits Banner -->
+      <div class="limits-banner" id="limitsBanner" style="display: none;">
+        <div class="limits-info">
+          <span class="plan-badge" id="planBadge">Plan</span>
+          <div class="limit-item" id="campaignLimit">
+            <span class="limit-label">Campagnes:</span>
+            <span class="limit-value" id="campaignLimitValue">0/0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          <h2>Liste des campagnes</h2>
+        </div>
+        <div id="campaignsList">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            <p>Aucune campagne</p>
+          </div>
+        </div>
+        <div id="pagination" class="pagination" style="display: none;"></div>
+      </div>
+
+      <!-- Campaign Detail Modal -->
+      <div class="modal" id="campaignModal" style="display: none;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="modalTitle">Details de la campagne</h3>
+            <button class="modal-close" id="closeModal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="campaign-info" id="campaignInfo"></div>
+            <h4>Messages</h4>
+            <div class="campaign-messages" id="campaignMessages"></div>
+            <div id="modalPagination" class="pagination" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="shared.js"></script>
+  <script>
+    let campaigns = [];
+    let currentPage = 1;
+    const itemsPerPage = 5;
+
+    // Modal pagination - server-side
+    let currentCampaign = null;
+    let currentMessages = [];
+    let currentFilter = null; // null = all, 'pending', 'sent', 'delivered', 'failed'
+    let currentOffset = 0;
+    let totalMessageCount = 0;
+    let hasMoreMessages = false;
+    let isLoadingMessages = false;
+    const messagesPerPage = 10;
+
+    // Stats counts (loaded separately)
+    let statsCounts = { total: 0, pending: 0, sent: 0, delivered: 0, failed: 0 };
+
+    function setFilter(filter) {
+      if (currentFilter === filter) {
+        filter = null; // Toggle off
+      }
+      currentFilter = filter;
+      currentMessages = [];
+      currentOffset = 0;
+      hasMoreMessages = true;
+      loadCampaignMessages();
+      updateFilterButtons();
+    }
+
+    function updateFilterButtons() {
+      document.querySelectorAll('.filter-stat').forEach(btn => {
+        const filter = btn.dataset.filter;
+        if ((filter === 'all' && currentFilter === null) || filter === currentFilter) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    function loadCampaignMessages() {
+      if (!currentCampaign || isLoadingMessages) return;
+      isLoadingMessages = true;
+
+      sendMessage({
+        type: 'get_campaign_messages',
+        campaignId: currentCampaign.id,
+        limit: messagesPerPage,
+        offset: currentOffset,
+        statusFilter: currentFilter
+      });
+    }
+
+    function loadMoreMessages() {
+      if (!hasMoreMessages || isLoadingMessages) return;
+      currentOffset = currentMessages.length;
+      loadCampaignMessages();
+    }
+
+    function getStatusBadge(status) {
+      switch (status) {
+        case 'pending':
+          return '<span class="campaign-status status-pending">En cours</span>';
+        case 'completed':
+          return '<span class="campaign-status status-completed">Termine</span>';
+        default:
+          return '<span class="campaign-status">' + escapeHtml(status) + '</span>';
+      }
+    }
+
+    function formatDateTime(dateStr) {
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
+      return date.toLocaleString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function renderCampaigns() {
+      const container = document.getElementById('campaignsList');
+      const paginationContainer = document.getElementById('pagination');
+
+      if (campaigns.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            <p>Aucune campagne</p>
+          </div>
+        `;
+        paginationContainer.style.display = 'none';
+        return;
+      }
+
+      // Calculate pagination
+      const totalPages = Math.ceil(campaigns.length / itemsPerPage);
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const paginatedCampaigns = campaigns.slice(startIndex, endIndex);
+
+      container.innerHTML = paginatedCampaigns.map(campaign => `
+        <div class="campaign-item" data-id="${campaign.id}">
+          <div class="campaign-header">
+            <div class="campaign-title">
+              <h3>${escapeHtml(campaign.subject)}</h3>
+              ${getStatusBadge(campaign.status)}
+            </div>
+            <div class="campaign-meta">
+              <span class="campaign-sender">
+                <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>
+                ${escapeHtml(campaign.sender_username || 'Inconnu')}
+              </span>
+              <span class="campaign-date">${formatDateTime(campaign.created_at)}</span>
+            </div>
+          </div>
+          <div class="campaign-stats">
+            <div class="stat">
+              <span class="stat-value">${campaign.total_count}</span>
+              <span class="stat-label">Total</span>
+            </div>
+            <div class="stat stat-success">
+              <span class="stat-value">${campaign.sent_count}</span>
+              <span class="stat-label">Envoyes</span>
+            </div>
+            <div class="stat stat-error">
+              <span class="stat-value">${campaign.failed_count}</span>
+              <span class="stat-label">Echecs</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">${Math.round((campaign.sent_count / campaign.total_count) * 100)}%</span>
+              <span class="stat-label">Succes</span>
+            </div>
+          </div>
+          <div class="campaign-template">
+            <strong>Template:</strong> ${escapeHtml(campaign.template.substring(0, 100))}${campaign.template.length > 100 ? '...' : ''}
+          </div>
+          <button class="btn btn-secondary btn-small" onclick="viewCampaignDetails('${campaign.id}')">
+            Voir les details
+          </button>
+        </div>
+      `).join('');
+
+      // Render pagination
+      if (totalPages > 1) {
+        paginationContainer.style.display = 'flex';
+        paginationContainer.innerHTML = renderPagination(totalPages);
+      } else {
+        paginationContainer.style.display = 'none';
+      }
+    }
+
+    function renderPagination(totalPages) {
+      let html = '';
+
+      // Previous button
+      html += `<button class="pagination-btn ${currentPage === 1 ? 'disabled' : ''}"
+                onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/></svg>
+              </button>`;
+
+      // Page numbers
+      for (let i = 1; i <= totalPages; i++) {
+        html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+      }
+
+      // Next button
+      html += `<button class="pagination-btn ${currentPage === totalPages ? 'disabled' : ''}"
+                onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="currentColor"/></svg>
+              </button>`;
+
+      // Info text
+      html += `<span class="pagination-info">${campaigns.length} campagne${campaigns.length > 1 ? 's' : ''}</span>`;
+
+      return html;
+    }
+
+    function goToPage(page) {
+      const totalPages = Math.ceil(campaigns.length / itemsPerPage);
+      if (page < 1 || page > totalPages) return;
+      currentPage = page;
+      renderCampaigns();
+    }
+
+    function viewCampaignDetails(campaignId) {
+      const campaign = campaigns.find(c => c.id === campaignId);
+      if (!campaign) return;
+
+      // Reset state
+      currentCampaign = campaign;
+      currentMessages = [];
+      currentOffset = 0;
+      currentFilter = null;
+      hasMoreMessages = true;
+      isLoadingMessages = false;
+
+      // Use counts from campaign data
+      statsCounts = {
+        total: campaign.total_count || 0,
+        pending: campaign.total_count - (campaign.sent_count || 0) - (campaign.failed_count || 0),
+        sent: campaign.sent_count || 0,
+        delivered: 0, // Will be updated when messages load
+        failed: campaign.failed_count || 0
+      };
+
+      // Show modal immediately with campaign info
+      showCampaignModal(campaign);
+
+      // Load first batch of messages
+      loadCampaignMessages();
+    }
+
+    function showCampaignModal(campaign) {
+      document.getElementById('modalTitle').textContent = campaign.subject;
+
+      document.getElementById('campaignInfo').innerHTML = `
+        <div class="info-grid info-grid-top">
+          <div class="info-item">
+            <span class="info-label">Statut:</span>
+            ${getStatusBadge(campaign.status)}
+          </div>
+          <div class="info-item">
+            <span class="info-label">Envoye par:</span>
+            <span>${escapeHtml(campaign.sender_username || 'Inconnu')}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Cree le:</span>
+            <span>${formatDateTime(campaign.created_at)}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Termine le:</span>
+            <span>${formatDateTime(campaign.completed_at)}</span>
+          </div>
+        </div>
+        <div class="filter-stats">
+          <button class="filter-stat filter-total active" data-filter="all" onclick="setFilter(null)">
+            <span class="filter-value">${statsCounts.total}</span>
+            <span class="filter-label">Total</span>
+          </button>
+          <button class="filter-stat filter-pending" data-filter="pending" onclick="setFilter('pending')">
+            <span class="filter-value">${statsCounts.pending}</span>
+            <span class="filter-label">Attente</span>
+          </button>
+          <button class="filter-stat filter-sent" data-filter="sent" onclick="setFilter('sent')">
+            <span class="filter-value">${statsCounts.sent}</span>
+            <span class="filter-label">Envoyes</span>
+          </button>
+          <button class="filter-stat filter-delivered" data-filter="delivered" onclick="setFilter('delivered')">
+            <span class="filter-value">${statsCounts.delivered}</span>
+            <span class="filter-label">Livres</span>
+          </button>
+          <button class="filter-stat filter-failed" data-filter="failed" onclick="setFilter('failed')">
+            <span class="filter-value">${statsCounts.failed}</span>
+            <span class="filter-label">Echecs</span>
+          </button>
+        </div>
+        <div class="template-full">
+          <strong>Template complet:</strong>
+          <pre>${escapeHtml(campaign.template)}</pre>
+        </div>
+      `;
+
+      // Show loading initially
+      document.getElementById('campaignMessages').innerHTML = '<p class="loading-messages">Chargement...</p>';
+      document.getElementById('modalPagination').style.display = 'none';
+
+      document.getElementById('campaignModal').style.display = 'flex';
+    }
+
+    function handleCampaignMessagesResponse(data) {
+      isLoadingMessages = false;
+
+      if (data.offset === 0) {
+        // First batch - replace messages
+        currentMessages = data.messages || [];
+
+        // Update stats from server if available
+        if (data.stats) {
+          statsCounts = {
+            total: data.stats.total || 0,
+            pending: data.stats.pending || 0,
+            sent: data.stats.sent || 0,
+            delivered: data.stats.delivered || 0,
+            failed: data.stats.failed || 0
+          };
+          // Update the stats display in the modal
+          updateStatsDisplay();
+        }
+      } else {
+        // Additional batch - append messages
+        currentMessages = currentMessages.concat(data.messages || []);
+      }
+
+      totalMessageCount = data.totalCount || 0;
+      hasMoreMessages = data.hasMore || false;
+
+      renderModalMessages();
+    }
+
+    function updateStatsDisplay() {
+      const statsContainer = document.querySelector('.filter-stats');
+      if (statsContainer) {
+        statsContainer.innerHTML = `
+          <button class="filter-stat filter-total ${currentFilter === null ? 'active' : ''}" data-filter="all" onclick="setFilter(null)">
+            <span class="filter-value">${statsCounts.total}</span>
+            <span class="filter-label">Total</span>
+          </button>
+          <button class="filter-stat filter-pending ${currentFilter === 'pending' ? 'active' : ''}" data-filter="pending" onclick="setFilter('pending')">
+            <span class="filter-value">${statsCounts.pending}</span>
+            <span class="filter-label">Attente</span>
+          </button>
+          <button class="filter-stat filter-sent ${currentFilter === 'sent' ? 'active' : ''}" data-filter="sent" onclick="setFilter('sent')">
+            <span class="filter-value">${statsCounts.sent}</span>
+            <span class="filter-label">Envoyes</span>
+          </button>
+          <button class="filter-stat filter-delivered ${currentFilter === 'delivered' ? 'active' : ''}" data-filter="delivered" onclick="setFilter('delivered')">
+            <span class="filter-value">${statsCounts.delivered}</span>
+            <span class="filter-label">Livres</span>
+          </button>
+          <button class="filter-stat filter-failed ${currentFilter === 'failed' ? 'active' : ''}" data-filter="failed" onclick="setFilter('failed')">
+            <span class="filter-value">${statsCounts.failed}</span>
+            <span class="filter-label">Echecs</span>
+          </button>
+        `;
+      }
+    }
+
+    function renderModalMessages() {
+      const messagesContainer = document.getElementById('campaignMessages');
+      const paginationContainer = document.getElementById('modalPagination');
+
+      if (currentMessages.length === 0 && !isLoadingMessages) {
+        messagesContainer.innerHTML = '<p class="no-messages">Aucun message' + (currentFilter ? ' avec ce filtre' : '') + '</p>';
+        paginationContainer.style.display = 'none';
+        return;
+      }
+
+      messagesContainer.innerHTML = `
+        <table class="messages-table">
+          <thead>
+            <tr>
+              <th>Destinataire</th>
+              <th>Statut</th>
+              <th>Date d'envoi</th>
+              <th>Erreur</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${currentMessages.map(msg => `
+              <tr>
+                <td>${escapeHtml(msg.address)}</td>
+                <td>${getMessageStatusBadge(msg.status)}</td>
+                <td>${formatDateTime(msg.sent_at)}</td>
+                <td>${msg.error_message ? escapeHtml(msg.error_message) : '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ${hasMoreMessages ? `
+          <div class="load-more-container">
+            <button class="btn btn-secondary" onclick="loadMoreMessages()" ${isLoadingMessages ? 'disabled' : ''}>
+              ${isLoadingMessages ? 'Chargement...' : 'Charger plus'}
+            </button>
+            <span class="load-more-info">${currentMessages.length} / ${totalMessageCount} messages</span>
+          </div>
+        ` : `
+          <div class="load-more-container">
+            <span class="load-more-info">${currentMessages.length} message${currentMessages.length > 1 ? 's' : ''}${currentFilter ? ' (filtre)' : ''}</span>
+          </div>
+        `}
+      `;
+
+      paginationContainer.style.display = 'none';
+    }
+
+    function getMessageStatusBadge(status) {
+      switch (status) {
+        case 'pending':
+          return '<span class="msg-status msg-pending">En attente</span>';
+        case 'sent':
+          return '<span class="msg-status msg-sent">Envoye</span>';
+        case 'delivered':
+          return '<span class="msg-status msg-delivered">Livre</span>';
+        case 'failed':
+          return '<span class="msg-status msg-failed">Echec</span>';
+        default:
+          return '<span class="msg-status">' + escapeHtml(status) + '</span>';
+      }
+    }
+
+    // Close modal
+    document.getElementById('closeModal').addEventListener('click', () => {
+      document.getElementById('campaignModal').style.display = 'none';
+    });
+
+    document.getElementById('campaignModal').addEventListener('click', (e) => {
+      if (e.target.id === 'campaignModal') {
+        document.getElementById('campaignModal').style.display = 'none';
+      }
+    });
+
+    let licenseLimits = null;
+
+    function updateLimitsDisplay() {
+      if (!licenseLimits || licenseLimits.error) return;
+
+      const banner = document.getElementById('limitsBanner');
+      const isUnlimited = licenseLimits.plan === 'Unlimited';
+
+      // Hide banner entirely for Unlimited plan
+      if (isUnlimited) {
+        banner.style.display = 'none';
+        return;
+      }
+
+      // Show limits banner
+      banner.style.display = 'flex';
+
+      // Update plan badge
+      document.getElementById('planBadge').textContent = licenseLimits.plan;
+
+      // Update campaign limit
+      const campInfo = licenseLimits.campaigns;
+      const periodLabel = campInfo.periodType === 'total' ? '' : '/mois';
+      document.getElementById('campaignLimitValue').textContent = `${campInfo.used}/${campInfo.max}${periodLabel}`;
+      const campLimitEl = document.getElementById('campaignLimit');
+      if (campInfo.limitReached) {
+        campLimitEl.classList.add('limit-reached');
+      } else {
+        campLimitEl.classList.remove('limit-reached');
+      }
+    }
+
+    // Initialize page
+    initPage({
+      onAuthenticated: () => {
+        sendMessage({ type: 'get_campaigns' });
+        sendMessage({ type: 'get_limits' });
+      },
+      onMessage: (data) => {
+        switch (data.type) {
+          case 'campaigns_list':
+            campaigns = data.campaigns || [];
+            renderCampaigns();
+            break;
+          case 'campaign_messages':
+            handleCampaignMessagesResponse(data);
+            break;
+          case 'limits':
+            licenseLimits = data;
+            updateLimitsDisplay();
+            break;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

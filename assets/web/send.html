@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Envoyer - SMS Grouper</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+  <!-- Login Page (hidden by default, shown by JS if needed) -->
+  <div class="login-page" id="loginPage" style="display: none;">
+    <div class="login-container">
+      <div class="login-header">
+        <h1>SMS Grouper</h1>
+        <p>Connectez-vous pour continuer</p>
+      </div>
+      <div class="login-card">
+        <h2>Connexion</h2>
+        <div class="login-error" id="loginError"></div>
+        <form class="login-form" id="loginForm">
+          <div class="form-group">
+            <label for="username">Nom d'utilisateur</label>
+            <input type="text" id="username" placeholder="admin" required autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label for="password">Mot de passe</label>
+            <input type="password" id="password" placeholder="Mot de passe" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application -->
+  <div class="app-container" id="mainApp">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-logo">
+        <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+      </div>
+      <div class="sidebar-nav">
+        <a class="nav-item active" href="send.html">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          <span>Envoyer</span>
+        </a>
+        <a class="nav-item" href="inbox.html">
+          <svg viewBox="0 0 24 24"><path d="M19 3H4.99c-1.11 0-1.98.89-1.98 2L3 19c0 1.1.88 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.11-.9-2-2-2zm0 12h-4c0 1.66-1.35 3-3 3s-3-1.34-3-3H4.99V5H19v10z"/></svg>
+          <span>Recus</span>
+        </a>
+        <a class="nav-item" href="outbox.html">
+          <svg viewBox="0 0 24 24"><path d="M19 3H4.99c-1.11 0-1.98.89-1.98 2L3 19c0 1.1.88 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.11-.9-2-2-2zm-7 14l-5-5h3V8h4v4h3l-5 5z"/></svg>
+          <span>Envoyes</span>
+        </a>
+        <a class="nav-item" href="campaigns.html">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          <span>Campagnes</span>
+        </a>
+      </div>
+      <div class="sidebar-footer">
+        <a class="nav-item logout" id="logoutBtn">
+          <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+          <span>Sortir</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="page-header">
+        <h1 class="page-title">Envoyer un SMS</h1>
+        <div class="header-status">
+          <div class="status-badge">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Connexion...</span>
+          </div>
+          <div class="user-badge">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <span id="userBadge">Utilisateur</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- License Limits Banner -->
+      <div class="limits-banner" id="limitsBanner" style="display: none;">
+        <div class="limits-info">
+          <span class="plan-badge" id="planBadge">Plan</span>
+          <div class="limit-item" id="smsLimit">
+            <span class="limit-label">SMS aujourd'hui:</span>
+            <span class="limit-value" id="smsLimitValue">0/0</span>
+          </div>
+          <div class="limit-item" id="campaignLimit">
+            <span class="limit-label">Campagnes:</span>
+            <span class="limit-value" id="campaignLimitValue">0/0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SMS Limit Reached Warning -->
+      <div class="limit-warning" id="smsLimitWarning" style="display: none;">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" fill="currentColor"/></svg>
+        <div>
+          <strong>Limite SMS atteinte</strong>
+          <p>Vous avez atteint votre limite journaliere de SMS. Revenez demain ou passez a un plan superieur.</p>
+        </div>
+      </div>
+
+      <!-- Campaign Limit Reached Warning -->
+      <div class="limit-warning" id="campaignLimitWarning" style="display: none;">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" fill="currentColor"/></svg>
+        <div>
+          <strong>Limite campagnes atteinte</strong>
+          <p id="campaignLimitMessage">Vous avez atteint votre limite de campagnes.</p>
+        </div>
+      </div>
+
+      <!-- Mode Tabs -->
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="single">SMS Simple</button>
+        <button class="mode-tab" data-mode="bulk">SMS Groupe (Excel)</button>
+      </div>
+
+      <!-- SIM Card Selector -->
+      <div class="sim-selector-card" id="simSelectorCard" style="display: none;">
+        <div class="sim-selector-label">Carte SIM:</div>
+        <div class="sim-selector" id="simSelector"></div>
+      </div>
+
+      <!-- Single SMS Form -->
+      <div class="card" id="singleMode">
+        <div class="card-header">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          <h2>Nouveau message</h2>
+        </div>
+        <form id="smsForm">
+          <div class="form-group">
+            <label for="phoneNumber">Numero de telephone</label>
+            <input type="tel" id="phoneNumber" placeholder="+33 6 12 34 56 78" required>
+          </div>
+          <div class="form-group">
+            <label for="message">Message</label>
+            <textarea id="message" placeholder="Tapez votre message ici..." required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Envoyer le SMS</button>
+        </form>
+      </div>
+
+      <!-- Bulk SMS Form -->
+      <div class="card" id="bulkMode" style="display: none;">
+        <div class="card-header">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1z"/></svg>
+          <h2>Envoi groupe</h2>
+        </div>
+
+        <div class="form-group">
+          <label for="bulkSubject">Objet de la campagne</label>
+          <input type="text" id="bulkSubject" placeholder="Ex: Promotion Noel 2024, Rappel RDV..." required>
+          <small class="help-text">L'objet permet d'identifier cette campagne d'envoi</small>
+        </div>
+
+        <div class="form-group">
+          <label for="excelFile">Fichier Excel</label>
+          <div class="file-upload">
+            <input type="file" id="excelFile" accept=".xlsx,.xls,.csv">
+            <div class="file-upload-label" id="fileLabel">
+              <svg viewBox="0 0 24 24" width="24" height="24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="#667eea"/></svg>
+              <span>Choisir un fichier Excel</span>
+            </div>
+          </div>
+          <small class="help-text">Colonne A = numero de telephone. Colonnes B, C, D... = donnees personnalisables</small>
+        </div>
+
+        <div class="form-group">
+          <label for="bulkMessage">Message (utilisez #B#, #C#, #D#... pour les variables)</label>
+          <textarea id="bulkMessage" placeholder="Bonjour #B#, votre commande #C# est prete."></textarea>
+          <small class="help-text">Exemple: #B# sera remplace par le contenu de la colonne B</small>
+        </div>
+
+        <div id="excelPreview" class="excel-preview" style="display: none;">
+          <h3>Apercu (<span id="previewCount">0</span> destinataires)</h3>
+          <div class="preview-table-container">
+            <table id="previewTable">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="messagePreview" class="message-preview" style="display: none;">
+          <h3>Exemple de message</h3>
+          <div id="messagePreviewContent" class="preview-content"></div>
+        </div>
+
+        <button type="button" id="sendBulkBtn" class="btn btn-primary btn-block" disabled>
+          Envoyer les SMS
+        </button>
+
+        <div id="sendProgress" class="send-progress" style="display: none;">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <span id="progressText">0 / 0</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="shared.js"></script>
+  <script>
+    let excelData = [];
+    let currentMode = 'single';
+    let sendingInProgress = false;
+    let sentCount = 0;
+    let totalToSend = 0;
+    let successCount = 0;
+    let errorCount = 0;
+    let simCards = [];
+    let selectedSimSlot = null;
+    let licenseLimits = null;
+
+    // Initialize page
+    initPage({
+      onAuthenticated: () => {
+        // Request SIM cards and limits when authenticated
+        sendMessage({ type: 'get_sim_cards' });
+        sendMessage({ type: 'get_limits' });
+      },
+      onMessage: (data) => {
+        switch (data.type) {
+          case 'sim_cards':
+            simCards = data.simCards || [];
+            renderSimSelector();
+            break;
+          case 'limits':
+            licenseLimits = data;
+            updateLimitsDisplay();
+            break;
+          case 'sms_sent':
+            if (sendingInProgress) {
+              sentCount++;
+              successCount++;
+              updateProgress();
+              if (sentCount >= totalToSend) {
+                sendingInProgress = false;
+                showCampaignStats();
+                resetBulkForm();
+              }
+            } else {
+              showToast('SMS envoye avec succes', 'success');
+            }
+            break;
+          case 'sms_error':
+            if (sendingInProgress) {
+              sentCount++;
+              errorCount++;
+              updateProgress();
+              if (sentCount >= totalToSend) {
+                sendingInProgress = false;
+                showCampaignStats();
+                resetBulkForm();
+              }
+            } else {
+              showToast(`Erreur: ${data.error || 'Echec envoi'}`, 'error');
+            }
+            break;
+        }
+      }
+    });
+
+    function updateLimitsDisplay() {
+      if (!licenseLimits || licenseLimits.error) return;
+
+      const banner = document.getElementById('limitsBanner');
+      const isUnlimited = licenseLimits.plan === 'Unlimited';
+
+      // Hide banner entirely for Unlimited plan
+      if (isUnlimited) {
+        banner.style.display = 'none';
+        return;
+      }
+
+      // Show limits banner
+      banner.style.display = 'flex';
+
+      // Update plan badge
+      document.getElementById('planBadge').textContent = licenseLimits.plan;
+
+      // Update SMS limit
+      const smsInfo = licenseLimits.sms;
+      document.getElementById('smsLimitValue').textContent = `${smsInfo.used}/${smsInfo.max}`;
+      const smsLimitEl = document.getElementById('smsLimit');
+      if (smsInfo.limitReached) {
+        smsLimitEl.classList.add('limit-reached');
+      } else {
+        smsLimitEl.classList.remove('limit-reached');
+      }
+
+      // Update campaign limit
+      const campInfo = licenseLimits.campaigns;
+      const periodLabel = campInfo.periodType === 'total' ? '' : '/mois';
+      document.getElementById('campaignLimitValue').textContent = `${campInfo.used}/${campInfo.max}${periodLabel}`;
+      const campLimitEl = document.getElementById('campaignLimit');
+      if (campInfo.limitReached) {
+        campLimitEl.classList.add('limit-reached');
+      } else {
+        campLimitEl.classList.remove('limit-reached');
+      }
+
+      // Show/hide warnings and disable forms
+      const smsWarning = document.getElementById('smsLimitWarning');
+      const campWarning = document.getElementById('campaignLimitWarning');
+      const singleMode = document.getElementById('singleMode');
+      const bulkMode = document.getElementById('bulkMode');
+
+      if (smsInfo.limitReached) {
+        smsWarning.style.display = 'flex';
+        singleMode.style.display = 'none';
+        bulkMode.style.display = 'none';
+        document.querySelector('.mode-tabs').style.display = 'none';
+      } else {
+        smsWarning.style.display = 'none';
+        document.querySelector('.mode-tabs').style.display = 'flex';
+        // Restore current mode display
+        singleMode.style.display = currentMode === 'single' ? 'block' : 'none';
+        bulkMode.style.display = currentMode === 'bulk' ? 'block' : 'none';
+      }
+
+      if (campInfo.limitReached) {
+        campWarning.style.display = 'flex';
+        const msg = campInfo.periodType === 'total'
+          ? 'Vous avez atteint votre limite totale de campagnes. Passez a un plan superieur.'
+          : 'Vous avez atteint votre limite mensuelle de campagnes. Revenez le mois prochain ou passez a un plan superieur.';
+        document.getElementById('campaignLimitMessage').textContent = msg;
+        // Hide bulk mode tab if campaign limit reached
+        document.querySelector('.mode-tab[data-mode="bulk"]').style.display = 'none';
+      } else {
+        campWarning.style.display = 'none';
+        document.querySelector('.mode-tab[data-mode="bulk"]').style.display = 'flex';
+      }
+    }
+
+    function renderSimSelector() {
+      const container = document.getElementById('simSelector');
+      const card = document.getElementById('simSelectorCard');
+
+      if (simCards.length <= 1) {
+        card.style.display = 'none';
+        selectedSimSlot = simCards.length === 1 ? simCards[0].slot : null;
+        return;
+      }
+
+      card.style.display = 'flex';
+
+      container.innerHTML = simCards.map((sim, index) => `
+        <button class="sim-btn ${index === 0 ? 'active' : ''}" data-slot="${sim.slot}">
+          <span class="sim-icon">SIM ${sim.slot + 1}</span>
+          <span class="sim-carrier">${escapeHtml(sim.carrierName || sim.displayName)}</span>
+        </button>
+      `).join('');
+
+      // Set default selection
+      selectedSimSlot = simCards[0].slot;
+
+      // Add click handlers
+      container.querySelectorAll('.sim-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          container.querySelectorAll('.sim-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          selectedSimSlot = parseInt(btn.dataset.slot);
+        });
+      });
+    }
+
+    function showCampaignStats() {
+      const successRate = Math.round((successCount / totalToSend) * 100);
+      const statsHtml = `
+        <div class="campaign-stats-modal">
+          <h3>Campagne terminee</h3>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-number">${totalToSend}</span>
+              <span class="stat-label">Total</span>
+            </div>
+            <div class="stat-item stat-success">
+              <span class="stat-number">${successCount}</span>
+              <span class="stat-label">Envoyes</span>
+            </div>
+            <div class="stat-item stat-error">
+              <span class="stat-number">${errorCount}</span>
+              <span class="stat-label">Echecs</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number">${successRate}%</span>
+              <span class="stat-label">Succes</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="closeCampaignStats()">Fermer</button>
+        </div>
+        <div class="modal-overlay" onclick="closeCampaignStats()"></div>
+      `;
+
+      const modalContainer = document.createElement('div');
+      modalContainer.id = 'campaignStatsModal';
+      modalContainer.innerHTML = statsHtml;
+      document.body.appendChild(modalContainer);
+    }
+
+    function closeCampaignStats() {
+      const modal = document.getElementById('campaignStatsModal');
+      if (modal) {
+        modal.remove();
+      }
+    }
+
+    // Mode tabs
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentMode = tab.dataset.mode;
+
+        document.getElementById('singleMode').style.display = currentMode === 'single' ? 'block' : 'none';
+        document.getElementById('bulkMode').style.display = currentMode === 'bulk' ? 'block' : 'none';
+      });
+    });
+
+    // Single SMS form
+    document.getElementById('smsForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!authenticated) {
+        showToast('Authentification requise', 'error');
+        return;
+      }
+
+      const phoneNumber = document.getElementById('phoneNumber').value.trim();
+      const message = document.getElementById('message').value.trim();
+      const requestId = Date.now().toString();
+
+      const msgData = {
+        type: 'send_sms',
+        to: phoneNumber,
+        body: message,
+        requestId: requestId
+      };
+
+      // Add simSlot if available
+      if (selectedSimSlot !== null) {
+        msgData.simSlot = selectedSimSlot;
+      }
+
+      const sent = sendMessage(msgData);
+
+      if (sent) {
+        document.getElementById('phoneNumber').value = '';
+        document.getElementById('message').value = '';
+        showToast('SMS en cours d\'envoi...', 'success');
+      } else {
+        showToast('Erreur de connexion', 'error');
+      }
+    });
+
+    // Excel file handling
+    document.getElementById('excelFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      document.getElementById('fileLabel').querySelector('span').textContent = file.name;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 'A', defval: '' });
+
+          excelData = jsonData;
+          renderExcelPreview();
+          updateMessagePreview();
+          updateSendButton();
+        } catch (err) {
+          showToast('Erreur de lecture du fichier Excel', 'error');
+          console.error(err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // Message template change
+    document.getElementById('bulkMessage').addEventListener('input', () => {
+      updateMessagePreview();
+      updateSendButton();
+    });
+
+    function renderExcelPreview() {
+      if (excelData.length === 0) {
+        document.getElementById('excelPreview').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('excelPreview').style.display = 'block';
+      document.getElementById('previewCount').textContent = excelData.length;
+
+      const table = document.getElementById('previewTable');
+      const thead = table.querySelector('thead');
+      const tbody = table.querySelector('tbody');
+
+      // Get all columns from first row
+      const columns = Object.keys(excelData[0] || {});
+
+      // Header
+      thead.innerHTML = '<tr>' + columns.map(col => `<th>${col}</th>`).join('') + '</tr>';
+
+      // Body (show max 5 rows)
+      const previewRows = excelData.slice(0, 5);
+      tbody.innerHTML = previewRows.map(row =>
+        '<tr>' + columns.map(col => `<td>${escapeHtml(String(row[col] || ''))}</td>`).join('') + '</tr>'
+      ).join('');
+
+      if (excelData.length > 5) {
+        tbody.innerHTML += `<tr><td colspan="${columns.length}" style="text-align:center;color:#999;">... et ${excelData.length - 5} autres lignes</td></tr>`;
+      }
+    }
+
+    function updateMessagePreview() {
+      const template = document.getElementById('bulkMessage').value;
+      const previewDiv = document.getElementById('messagePreview');
+      const contentDiv = document.getElementById('messagePreviewContent');
+
+      if (!template || excelData.length === 0) {
+        previewDiv.style.display = 'none';
+        return;
+      }
+
+      previewDiv.style.display = 'block';
+      const firstRow = excelData[0];
+      const previewMessage = replaceVariables(template, firstRow);
+      contentDiv.innerHTML = `
+        <div class="preview-item">
+          <strong>A:</strong> ${escapeHtml(String(firstRow['A'] || ''))}
+        </div>
+        <div class="preview-item">
+          <strong>Message:</strong> ${escapeHtml(previewMessage)}
+        </div>
+      `;
+    }
+
+    function replaceVariables(template, row) {
+      let result = template;
+      // Replace #A#, #B#, #C#, etc. with corresponding column values
+      const columns = Object.keys(row);
+      columns.forEach(col => {
+        const regex = new RegExp(`#${col}#`, 'gi');
+        result = result.replace(regex, String(row[col] || ''));
+      });
+      return result;
+    }
+
+    function updateSendButton() {
+      const subject = document.getElementById('bulkSubject').value.trim();
+      const template = document.getElementById('bulkMessage').value.trim();
+      const btn = document.getElementById('sendBulkBtn');
+      btn.disabled = !subject || !template || excelData.length === 0 || sendingInProgress;
+
+      if (excelData.length > 0 && template && subject) {
+        btn.textContent = `Envoyer ${excelData.length} SMS`;
+      } else {
+        btn.textContent = 'Envoyer les SMS';
+      }
+    }
+
+    // Listen for subject changes
+    document.getElementById('bulkSubject').addEventListener('input', updateSendButton);
+
+    function updateProgress() {
+      const fill = document.getElementById('progressFill');
+      const text = document.getElementById('progressText');
+      const percent = (sentCount / totalToSend) * 100;
+      fill.style.width = percent + '%';
+      text.textContent = `${sentCount} / ${totalToSend}`;
+    }
+
+    function resetBulkForm() {
+      // Reset progress bar
+      document.getElementById('sendProgress').style.display = 'none';
+      document.getElementById('progressFill').style.width = '0%';
+      document.getElementById('progressText').textContent = '0 / 0';
+
+      // Reset form fields
+      document.getElementById('bulkSubject').value = '';
+      document.getElementById('bulkMessage').value = '';
+      document.getElementById('excelFile').value = '';
+      document.getElementById('fileLabel').querySelector('span').textContent = 'Choisir un fichier Excel';
+
+      // Hide previews
+      document.getElementById('excelPreview').style.display = 'none';
+      document.getElementById('messagePreview').style.display = 'none';
+
+      // Reset data
+      excelData = [];
+      sentCount = 0;
+      totalToSend = 0;
+      successCount = 0;
+      errorCount = 0;
+
+      // Update button state
+      updateSendButton();
+    }
+
+    // Send bulk SMS
+    document.getElementById('sendBulkBtn').addEventListener('click', () => {
+      if (!authenticated) {
+        showToast('Authentification requise', 'error');
+        return;
+      }
+
+      const subject = document.getElementById('bulkSubject').value.trim();
+      if (!subject) {
+        showToast('Objet requis', 'error');
+        return;
+      }
+
+      if (excelData.length === 0) {
+        showToast('Aucun destinataire', 'error');
+        return;
+      }
+
+      const template = document.getElementById('bulkMessage').value.trim();
+      if (!template) {
+        showToast('Message requis', 'error');
+        return;
+      }
+
+      // Confirm before sending
+      if (!confirm(`Envoyer ${excelData.length} SMS pour "${subject}" ?`)) {
+        return;
+      }
+
+      // Create campaign ID
+      const campaignId = `campaign_${Date.now()}`;
+
+      sendingInProgress = true;
+      sentCount = 0;
+      totalToSend = excelData.length;
+
+      document.getElementById('sendBulkBtn').disabled = true;
+      document.getElementById('sendProgress').style.display = 'block';
+      updateProgress();
+
+      // Send SMS one by one with a small delay
+      excelData.forEach((row, index) => {
+        setTimeout(() => {
+          const phoneNumber = String(row['A'] || '').trim();
+          if (!phoneNumber) {
+            sentCount++;
+            updateProgress();
+            return;
+          }
+
+          const message = replaceVariables(template, row);
+          const requestId = `bulk_${Date.now()}_${index}`;
+
+          const msgData = {
+            type: 'send_bulk_sms',
+            campaignId: campaignId,
+            subject: subject,
+            to: phoneNumber,
+            body: message,
+            template: template,
+            rowIndex: index,
+            totalCount: excelData.length,
+            requestId: requestId
+          };
+
+          // Add simSlot if available
+          if (selectedSimSlot !== null) {
+            msgData.simSlot = selectedSimSlot;
+          }
+
+          sendMessage(msgData);
+        }, index * 500); // 500ms delay between each SMS
+      });
+    });
+  </script>
+</body>
+</html>

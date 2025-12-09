@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMS Grouper - Test Client</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .status.connected { background: #d4edda; color: #155724; }
+        .status.disconnected { background: #f8d7da; color: #721c24; }
+        .status.connecting { background: #fff3cd; color: #856404; }
+        input, button, textarea {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        input { width: 100%; margin-bottom: 10px; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        button.danger { background: #dc3545; }
+        button.danger:hover { background: #c82333; }
+        button.success { background: #28a745; }
+        button.success:hover { background: #218838; }
+        #logs {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+        .log-entry { margin-bottom: 5px; }
+        .log-time { color: #888; }
+        .log-send { color: #4ec9b0; }
+        .log-receive { color: #dcdcaa; }
+        .log-error { color: #f44747; }
+        .log-info { color: #569cd6; }
+        .row { display: flex; gap: 10px; }
+        .row input { flex: 1; }
+    </style>
+</head>
+<body>
+    <h1>SMS Grouper - Test Client</h1>
+
+    <div class="card">
+        <h3>Connexion WebSocket</h3>
+        <div class="row">
+            <input type="text" id="wsUrl" placeholder="ws://192.168.x.x:8085" value="ws://192.168.1.1:8085">
+            <button id="connectBtn" class="success" onclick="connect()">Connecter</button>
+            <button id="disconnectBtn" class="danger" onclick="disconnect()" disabled>Déconnecter</button>
+        </div>
+        <p>Status: <span id="status" class="status disconnected">Déconnecté</span></p>
+    </div>
+
+    <div class="card">
+        <h3>Envoyer un SMS</h3>
+        <input type="text" id="phoneNumber" placeholder="Numéro de téléphone (ex: +33612345678)">
+        <textarea id="smsBody" placeholder="Message SMS..." rows="3" style="width:100%;resize:vertical;"></textarea>
+        <button id="sendSmsBtn" onclick="sendSms()" disabled>Envoyer SMS</button>
+        <button onclick="sendPing()" id="pingBtn" disabled>Ping</button>
+        <button onclick="getStatus()" id="statusBtn" disabled>Get Status</button>
+    </div>
+
+    <div class="card">
+        <h3>Logs</h3>
+        <button onclick="clearLogs()">Effacer les logs</button>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        let ws = null;
+
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
+            logs.appendChild(entry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function updateStatus(status) {
+            const el = document.getElementById('status');
+            el.textContent = status;
+            el.className = 'status ' + status.toLowerCase().replace('é', 'e');
+        }
+
+        function setButtonsEnabled(connected) {
+            document.getElementById('connectBtn').disabled = connected;
+            document.getElementById('disconnectBtn').disabled = !connected;
+            document.getElementById('sendSmsBtn').disabled = !connected;
+            document.getElementById('pingBtn').disabled = !connected;
+            document.getElementById('statusBtn').disabled = !connected;
+        }
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            log(`Connexion à ${url}...`, 'info');
+            updateStatus('Connecting');
+
+            try {
+                ws = new WebSocket(url);
+
+                ws.onopen = () => {
+                    log('Connecté au serveur!', 'info');
+                    updateStatus('Connected');
+                    setButtonsEnabled(true);
+                };
+
+                ws.onmessage = (event) => {
+                    log(`← ${event.data}`, 'receive');
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'sms_received') {
+                            log(`📱 SMS reçu de ${data.sms.address}: ${data.sms.body}`, 'receive');
+                        }
+                    } catch (e) {}
+                };
+
+                ws.onclose = () => {
+                    log('Déconnecté du serveur', 'error');
+                    updateStatus('Disconnected');
+                    setButtonsEnabled(false);
+                    ws = null;
+                };
+
+                ws.onerror = (error) => {
+                    log('Erreur de connexion', 'error');
+                    updateStatus('Disconnected');
+                    setButtonsEnabled(false);
+                };
+            } catch (e) {
+                log(`Erreur: ${e.message}`, 'error');
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function send(data) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const json = JSON.stringify(data);
+                ws.send(json);
+                log(`→ ${json}`, 'send');
+            } else {
+                log('Non connecté!', 'error');
+            }
+        }
+
+        function sendSms() {
+            const to = document.getElementById('phoneNumber').value;
+            const body = document.getElementById('smsBody').value;
+            if (!to || !body) {
+                log('Veuillez remplir le numéro et le message', 'error');
+                return;
+            }
+            send({
+                type: 'send_sms',
+                to: to,
+                body: body,
+                requestId: 'req_' + Date.now()
+            });
+        }
+
+        function sendPing() {
+            send({ type: 'ping' });
+        }
+
+        function getStatus() {
+            send({ type: 'get_status' });
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        // Auto-fill with common local IP pattern
+        log('Entrez l\'adresse IP affichée dans l\'app SMS Grouper', 'info');
+    </script>
+</body>
+</html>
